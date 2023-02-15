@@ -1,53 +1,113 @@
-﻿;NO WORKEE!!!     
-
-
-; Modified from obj2str.ahk by errorseven.
+﻿; Modified from obj2str.ahk by errorseven.
 ; burque505 Feb 14 2023
 ; (No, I'm not thrilled about the name of my script :))
 
-; Given the following object:
-/*
-MyDict := {borrowers:[{1_FullName:"John Roberts", 2_Street:"123 Anywhere St", 3_City:"Las Vegas", 4_State:"LV", 5_Zip:89112}
-, {1_FullName:"Jane Roberts", 2_Street:"123 Anywhere St", 3_City:"Las Vegas", 4_State:"LV", 5_Zip:89112}]
-, lenders:[{1_FullName:"Primate Trust, Inc.", 2_Street:"9988 W. Flamingo Suite 800", 3_City:"Las Vegas", 4_State:"LV", 5_Zip:89112}]}
-FileAppend, % Obj2Str(MyDict), *
-*/
-; 'obj2pystr(MyDict)' returns:
-/*
-{'borrowers': [{'1_FullName': 'John Roberts', '2_Street': '123 Anywhere St', '3_City': 'Las Vegas', '4_State': 'LV', '5_Zip': 89112}
-, {'1_FullName': 'Jane Roberts', '2_Street': '123 Anywhere St', '3_City': 'Las Vegas', '4_State': 'LV', '5_Zip': 89112}]
-, 'lenders': [{'1_FullName': 'Zia Trust, Inc. as custodian', '2_Street': '9988 W. Flamingo Suite 800', '3_City': 'Las Vegas', '4_State': 'LV', '5_Zip': 87110}]}
-*/
-
 ; The motivating factor for this mod was a desire to export AHK v1 objects to stdout via 'FileAppend, % obj2str(YourObjectHere), *'
 ; and process the result in Python, using the library 'ahk'
+
 ; https://github.com/spyoungtech/ahk
 ; https://www.autohotkey.com/boards/viewtopic.php?f=6&t=63184&p=270111&hilit=spyoungtech#p270111
 
-; Here's a sample python script to process the result passed from ahk to python:
+; A requirement is the ability to process multiline strings in both AHK and Python,
+; which meant jumping through some hoops with continuation sections and StrReplace().
+; I also need to be able to process underscores in key names in dictionaries.
+
+; AHK Script 'your_script_here5.ahk'
+/*
+#Include obj2pystr.ahk
+
+hughes = 
+(
+John James Hughes
+as Trusteee
+of the J.J. Hughes Revocable Living Trust
+)
+
+MyStuff := [1, 2, 3, 5, hughes]
+;MsgBox % Obj2PyStr(MyDict)
+FileAppend, % Obj2PyStr(MyStuff), *
+*/
+
+; python to read the output of that script
 /*
 from ahk import AHK
-import json
+from ast import literal_eval
 
 ahk = AHK()
 
-with open(r"your_script_name_here.ahk", 'r') as f:
+with open(r"your_script_here5.ahk", 'r') as f:
     my_script =  f.read()
 
-#print(my_script)
 result = ahk.run_script(my_script)
-#print(result)  # Hello Data!pahk
-res = json.loads(result)
-print(str(res))
+print(result)  
+NewStuff = literal_eval(result)
+print(type(NewStuff))
+print(NewStuff[4])
+*/
+
+; Result:
+/*
+[1, 2, 3, 5, '''John James Hughes
+as Trusteee
+of the J.J. Hughes Revocable Living Trust''']
+<class 'list'>
+John James Hughes
+as Trusteee
+of the J.J. Hughes Revocable Living Trust
+*/
+
+; Now for a 'Dictionary' (associative array in AHK v1)
+; AHK Script 'your_script_here4.ahk'
+/*
+#Include obj2pystr.ahk
+
+hughes = 
+(
+John James Hughes
+as Trusteee
+of the J.J. Hughes Revocable Living Trust
+)
+
+MyDict := {borrowers:[{1_FullName:"James Roberts", 2_Street:"346 Cage St", 3_City:"Tarzana", 4_State:"CA", 5_Zip:90111}]
+, lenders:[{1_FullName:hughes, 2_Street:"123 Anywhere", 3_City:"Albacore", 4_State:"NT", 5_Zip:80111}]}
+
+;MsgBox % Obj2PyStr(MyDict)
+FileAppend, % Obj2PyStr(MyDict), *
+
+*/
+
+; Python script to process this:
+/*
+from ahk import AHK
+#import json
+from ast import literal_eval
+
+ahk = AHK()
+
+with open(r"your_script_here4.ahk", 'r') as f:
+    my_script =  f.read()
+
+result = ahk.run_script(my_script)
+print(result)  
+NewStuff = literal_eval(result)
+print(type(NewStuff))
+print(NewStuff["lenders"][0]["1_FullName"])
+*/
+
+; Result:
+/*
+{"borrowers":[{"1_FullName":'''James Roberts''', "2_Street":'''346 Cage St''', "3_City":'''Tarzana''', "4_State":'''CA''', "5_Zip":90111}], "lenders":[{"1_FullName":'''John James Hughes
+as Trusteee
+of the J.J. Hughes Revocable Living Trust''', "2_Street":'''123 Anywhere''', "3_City":'''Albacore''', "4_State":'''NT''', "5_Zip":80111}]}
+<class 'dict'>
+John James Hughes
+as Trusteee
+of the J.J. Hughes Revocable Living Trust
 */
 
 ; NOTE:
-; I've tried doing the processing only on the python side, e.g. using the json5 lib, but my results have been spotty.
-; (in the example, json5 choked on the underscores)
-
-; NOTE:
-; 
-
+; Use ast (from ast import )
+; Other AHK objects remain untested
 
 
 Obj2PyStr(obj) { 
